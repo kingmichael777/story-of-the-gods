@@ -1,0 +1,6 @@
+GSAP and ScrollTrigger are distributed under the GreenSock Standard License.
+
+License terms: https://gsap.com/standard-license/
+Package: gsap 3.15.0
+
+Review the current license before redistributing or using the bundled files in a commercial project.

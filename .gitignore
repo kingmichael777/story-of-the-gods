@@ -1,0 +1,10 @@
+.webdev-qa/
+node_modules/
+*.log
+
+.head-qa/
+
+.netlify/
+.env
+.env.*
+!.env.example
