@@ -28,8 +28,10 @@
     player.sync = () => {
       if (!allowed() || !player.visible || player.failed) { video.pause(); return; }
       if (!video.getAttribute('src') && player.name) {
-        video.src = mediaRoot + player.name + '.mp4';
+        const filename = player.name === 'the-one-above' ? 'the-one-above-full' : player.name;
+        video.src = mediaRoot + filename + '.mp4';
         video.load();
+        if (player.name === 'the-one-above') video.playbackRate = .7;
       }
       if (video.paused) video.play().catch(() => { /* Poster remains when autoplay is unavailable. */ });
     };
