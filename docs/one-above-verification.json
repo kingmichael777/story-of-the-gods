@@ -1,0 +1,78 @@
+{
+  "browser": "153.0.8010.0",
+  "checks": [
+    "webgl: requested renderer active",
+    "webgl: no video",
+    "webgl: eyes respond with head locked",
+    "webgl: gaze changes eye pixels",
+    "webgl: gaze leaves chest pixels fixed",
+    "webgl: head rotates independently",
+    "webgl: head visibly deforms",
+    "webgl: breath changes chest pixels",
+    "webgl: breath leaves head pixels fixed",
+    "webgl: blink changes eye pixels",
+    "webgl: blink reopens",
+    "webgl: pause stops rendering",
+    "webgl: paused pixels remain fixed",
+    "webgl: mouse follows",
+    "webgl: keyboard follows",
+    "webgl: offscreen stops rendering",
+    "webgl: onscreen resumes",
+    "webgl: preference change stops motion",
+    "webgl: no errors",
+    "canvas2d: requested renderer active",
+    "canvas2d: no video",
+    "canvas2d: eyes respond with head locked",
+    "canvas2d: gaze changes eye pixels",
+    "canvas2d: gaze leaves chest pixels fixed",
+    "canvas2d: head rotates independently",
+    "canvas2d: head visibly deforms",
+    "canvas2d: breath changes chest pixels",
+    "canvas2d: breath leaves head pixels fixed",
+    "canvas2d: blink changes eye pixels",
+    "canvas2d: blink reopens",
+    "canvas2d: pause stops rendering",
+    "canvas2d: paused pixels remain fixed",
+    "canvas2d: mouse follows",
+    "canvas2d: keyboard follows",
+    "canvas2d: offscreen stops rendering",
+    "canvas2d: onscreen resumes",
+    "canvas2d: preference change stops motion",
+    "canvas2d: no errors",
+    "native emulated touch drag controls head",
+    "phone no horizontal overflow",
+    "reduced motion starts static",
+    "paused portrait permits native vertical scroll",
+    "explicit reduced motion opt-in works",
+    "no-JS original artwork is visible",
+    "asset error returns original artwork"
+  ],
+  "performance": [
+    {
+      "renderer": "webgl",
+      "renderedFrames": 62,
+      "elapsedMs": 2568.199999999255,
+      "rafP95Ms": 116.70000000000073,
+      "cpuDraw": "[ WebGL / 6250 triangles / 0.7 ms average CPU draw ]"
+    },
+    {
+      "renderer": "canvas2d",
+      "renderedFrames": 50,
+      "elapsedMs": 2502,
+      "rafP95Ms": 16.700000000004366,
+      "cpuDraw": "[ Canvas 2D / 454 triangles / 2.7 ms average CPU draw ]"
+    }
+  ],
+  "notes": [
+    "Chromium with software WebGL, not a physical device benchmark.",
+    "WebGL frame-rate varied from about 24 to 60 fps across short runs.",
+    "CPU draw timing excludes GPU time.",
+    "Screenshots are captured with motion paused where needed for stable inspection."
+  ],
+  "layoutWidths": [
+    1440,
+    1280,
+    768,
+    390
+  ]
+}

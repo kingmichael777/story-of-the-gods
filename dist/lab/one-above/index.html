@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="An interactive drawing study of The One Above. Move your cursor or drag to direct his gaze.">
+  <title>The One Above · Interactive study</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-barba="wrapper">
+  <header><a href="../../">Story of the Gods<span>by Mike Rashid King</span></a><span class="label">[ Motion study 01 ]</span></header>
+  <main data-barba="container" data-barba-namespace="one-above-study">
+    <section class="intro" aria-labelledby="title">
+      <p class="label">[ The One Above ]</p>
+      <h1 id="title">You move.<br><em>He follows.</em></h1>
+      <p class="lead"><span class="desktop-hint">Move your cursor across the portrait.</span><span class="touch-hint">Touch and drag across the portrait.</span><br>Give him a direction. Hold his gaze.</p>
+      <div class="controls" aria-label="Portrait controls">
+        <button id="blink" disabled>Blink <span aria-hidden="true">↗</span></button>
+        <button id="center" disabled>Center <span aria-hidden="true">⊙</span></button>
+        <button id="pause" aria-pressed="false" disabled>Pause motion</button>
+      </div>
+      <fieldset class="channels" disabled>
+        <legend>[ Isolate the movement ]</legend>
+        <label><input id="move-head" type="checkbox" checked> Head turn</label>
+        <label><input id="move-eyes" type="checkbox" checked> Eye tracking</label>
+        <label><input id="auto-blink" type="checkbox" checked> Natural blinks</label>
+        <label><input id="breathe" type="checkbox" checked> Breathing</label>
+      </fieldset>
+      <div class="study-note"><span class="label">[ Try this ]</span><p>Turn off Head turn. Move across the portrait and watch only the eyes follow. Turn off Eye tracking to isolate the head.</p><p class="limit">A 2.5D study using the existing September 30 head portrait. Small turns, mesh eyelids and local chest movement. No video in this study.</p></div>
+    </section>
+    <section class="portrait-section" aria-label="Interactive character">
+      <div class="portrait-top"><span class="label" id="status" role="status">[ Preparing portrait ]</span><button id="mesh" class="text-button" aria-pressed="false" disabled>Show rig</button></div>
+      <div id="stage" class="stage" tabindex="0" role="group" aria-label="Direct The One Above's gaze" aria-describedby="instructions">
+        <img id="fallback" src="assets/center.webp" width="800" height="1000" alt="The One Above, a bald Black man with amber eyes and graphite and gold facial armor.">
+        <canvas id="portrait" width="800" height="1000" aria-hidden="true"></canvas>
+        <canvas id="wireframe" width="800" height="1000" aria-hidden="true"></canvas>
+        <span class="reticle" aria-hidden="true"></span>
+      </div>
+      <p id="instructions" class="sr-only">Drag or move your pointer to turn the head. With the portrait focused, use arrow keys to look around, B to blink, and Home to center. The direction buttons below also work.</p>
+      <div class="portrait-bottom">
+        <div><span class="label">[ Direction ]</span><output id="direction">Center</output></div>
+        <div class="direction-pad" aria-label="Choose a direction">
+          <button data-aim="-1,-1" aria-label="Look up left" disabled>↖</button><button data-aim="0,-1" aria-label="Look up" disabled>↑</button><button data-aim="1,-1" aria-label="Look up right" disabled>↗</button>
+          <button data-aim="-1,0" aria-label="Look left" disabled>←</button><button data-aim="0,0" aria-label="Look center" disabled>·</button><button data-aim="1,0" aria-label="Look right" disabled>→</button>
+          <button data-aim="-1,1" aria-label="Look down left" disabled>↙</button><button data-aim="0,1" aria-label="Look down" disabled>↓</button><button data-aim="1,1" aria-label="Look down right" disabled>↘</button>
+        </div>
+        <p class="label">[ Original artwork ]<br>[ Live interaction ]</p>
+      </div>
+    </section>
+  </main>
+  <details class="technical">
+    <summary>What actually moves</summary>
+    <div class="technical-content">
+      <p>The browser deforms separate regions of one original illustration. These are independent mesh controls, not separate painted layers or a complete skeletal character.</p>
+      <dl>
+        <dt>Head</dt><dd>A depth-shaped face rotates through a limited angle, blending into an anchored neck. It cannot reveal unseen anatomy.</dd>
+        <dt>Eyes and eyelids</dt><dd>Iris vertices follow your input faster than the head. Eyelid vertices close and reopen on a timed blink. Clean cinematic eyelids still need painted lid and eyeball layers.</dd>
+        <dt>Breathing</dt><dd>Chest and shoulder vertices expand and rise subtly over a 5.8-second cycle. The head and image boundary stay fixed when only breathing is enabled.</dd>
+        <dt>Existing website</dt><dd>The character performances and Mothership footage remain MP4 playback. The landing page and its satellites are unchanged.</dd>
+        <dt>Next production step</dt><dd>Consistent head angles, concealed neck and shoulder artwork, separate eyes and eyelids, or a sculpted 3D head with facial controls. Arms, fabric and cinematic actions need their own rig.</dd>
+      </dl>
+      <p id="render-info" class="label">[ Renderer preparing ]</p>
+      <p class="limit">Show rig reveals the actual triangles: head, eyes, eyelids and breathing areas are highlighted. Reduced motion starts paused. Motion stops when the portrait is offscreen or the tab is hidden.</p>
+    </div>
+  </details>
+  <footer><span>Interactive prototype</span><span>Sacred Seven / Story of the Gods</span></footer>
+  <noscript><p class="noscript">JavaScript is required for interaction. The original portrait is shown above.</p></noscript>
+  <script src="../../js/vendor/anime-4.5.0.min.js"></script>
+  <script src="rig.js"></script>
+</body>
+</html>
