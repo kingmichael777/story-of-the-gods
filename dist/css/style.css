@@ -78,3 +78,11 @@ body.motion-paused .hero-figure{transform:none!important}body.motion-paused .ori
 .origin-media>img.is-video-covered{visibility:hidden}
 body.motion-paused .origin-media{transform:none!important}
 @media(max-width:700px){.origin-media>img,.origin-media>video{object-position:54% 50%}}
+
+/* Anime.js satellites follow the existing manuscript orbit geometry. */
+.satellite-orbit{position:absolute;inset:0;display:block;pointer-events:none}
+.orbital-satellite{position:absolute;left:50%;top:0;width:9px;height:9px;margin:-4.5px;border:1px solid #e6e5d8;border-radius:50%;background:#bdbdad}
+.cosmic-rings i:nth-child(2) .orbital-satellite{width:6px;height:6px;margin:-3px;background:var(--paper)}
+.cosmic-rings i:nth-child(3) .orbital-satellite{width:12px;height:12px;margin:-6px;background:#57594e}
+body.motion-paused .chapter{transition:none}
+html:has(body.motion-paused){scroll-behavior:auto}

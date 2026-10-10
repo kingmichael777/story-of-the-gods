@@ -10,6 +10,7 @@ The complete static site is in `dist/`. No package installation, build command, 
 - `dist/css/style.css`: responsive design
 - `dist/js/app.js`: navigation, character roster, dialogs, and scrolling
 - `dist/js/scene-motion.js`: hero, character, origin, and Mothership video playback
+- `dist/js/editorial-motion.js`: Anime.js hero sequence, scroll reveals, character entrances, and orbital satellites
 - `dist/assets/motion/`: encoded videos and static posters
 
 Run a local preview with `python3 -m http.server 8080 --directory dist`, then open http://localhost:8080.
@@ -32,6 +33,8 @@ The existing Sites publication is retained during migration. Its configuration i
 ## Motion
 
 Videos are silent and play inline. They pause when off screen, when the page is hidden, or when motion is disabled. Reduced-motion visitors receive static artwork. The later Mothership scene is tied to scroll position.
+
+Anime.js 4.5.0 is vendored locally with its MIT license in `dist/js/vendor/`. It owns text and entrance choreography; GSAP retains the existing origin parallax and Lenis integration. Each property has one animation owner. The motion switch stops the orbit loops and restores text immediately during an entrance; offscreen orbits pause. A missing Anime.js download leaves the full page readable and the character picker functional.
 
 ## Ownership
 
