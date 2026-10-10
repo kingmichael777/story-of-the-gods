@@ -5,14 +5,34 @@
   const stage = $('#stage'), canvas = $('#portrait'), wire = $('#wireframe');
   const status = $('#status'), direction = $('#direction');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  const state = { x:0, y:0, gx:0, gy:0, tx:0, ty:0, blink:0, paused:reduced.matches, mesh:false, ready:false };
-  let gl, ctx2d, portraitImage, program, data, texture, buffer, indices, coords, drawPoints;
+  const state = { x:0, y:0, gx:0, gy:0, tx:0, ty:0, blink:0, breath:0, phase:0, paused:reduced.matches, mesh:false, ready:false };
+  const channels = {head:true, eyes:true, blink:true, breath:true};
+  let gl, ctx2d, portraitImage, program, data, texture, buffer, indices, coords, drawPoints, profiles, sampler;
+  let renders=0, renderTime=0;
   let lastRender='';
   let frame = 0, last = 0, visible = true, blinkAt = 0, blinkAnimation, returnTimer;
   const upper = [[246,161,160,159,158,157,173], [466,388,387,386,385,384,398]];
   const lower = [[7,163,144,145,153,154,155], [249,390,373,374,380,381,382]];
   const eyeCorners = [[33,133],[263,362]];
   const iris = [[468,469,470,471,472],[473,474,475,476,477]];
+  const smooth = (a,b,v) => {const t=Math.max(0,Math.min(1,(v-a)/(b-a)));return t*t*(3-2*t);};
+  const damp = (value,target,amount) => {const next=value+(target-value)*amount;return Math.abs(next-target)<.0001?target:next;};
+
+  function prepareRegions() {
+    const nose=data.points[1];
+    profiles=data.points.map(p=>{
+      const x=p[0]-.5,y=(p[1]-.34)*1.25;
+      const ellipsoid=Math.max(0,1-x*x/(.34*.34)-y*y/(.43*.43));
+      const z=.24*ellipsoid+.06*Math.exp(-((p[0]-nose[0])**2/.0015+(p[1]-nose[1])**2/.004));
+      const head=1-smooth(.58,.82,p[1]);
+      // Zero on the head and image perimeter. Deform the chest/shoulders locally,
+      // never scale or translate the whole portrait to simulate a breath.
+      // Start below the lowest face-adjacent vertices in the coarse fallback
+      // mesh too; otherwise a long fallback triangle can tug the lower jaw.
+      const torso=smooth(.64,.79,p[1])*(1-smooth(.90,1,p[1]))*smooth(0,.04,p[0])*(1-smooth(.96,1,p[0]));
+      return {x,y,z,head,torso};
+    });
+  }
 
   function shader(type, source) {
     const s = gl.createShader(type); gl.shaderSource(s,source); gl.compileShader(s);
@@ -45,6 +65,7 @@
     gl.linkProgram(program);
     if (!gl.getProgramParameter(program,gl.LINK_STATUS)) throw new Error('Cannot link portrait shader');
     gl.useProgram(program);
+    sampler=gl.getUniformLocation(program,'portrait');
     buffer=gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER,buffer);
     ['position','uv'].forEach((name,i)=>{
       const a=gl.getAttribLocation(program,name); gl.enableVertexAttribArray(a);
@@ -73,19 +94,15 @@
   }
   function render() {
     if (!state.ready) return;
-    const yaw=state.x*.34,pitch=state.y*.20;
-    const nose=data.points[1];
+    const started=performance.now();
+    const yaw=state.x*.26,pitch=state.y*.16;
+    const cy=Math.cos(yaw),sy=Math.sin(yaw),cp=Math.cos(pitch),sp=Math.sin(pitch);
     for(let i=0;i<drawPoints.length/2;i++){
-      const p=data.points[i],xx=p[0]-.5,yy=(p[1]-.34)*1.25;
-      const ellipsoid=Math.max(0,1-xx*xx/(.34*.34)-yy*yy/(.43*.43));
-      const noseDepth=.06*Math.exp(-((p[0]-nose[0])**2/.0015+(p[1]-nose[1])**2/.004));
-      const z=.24*ellipsoid+noseDepth;
-      const neck=Math.max(0,Math.min(1,(p[1]-.58)/.24));
-      const head=1-neck*neck*(3-2*neck);
-      const rx=xx*Math.cos(yaw)+z*Math.sin(yaw),rz=-xx*Math.sin(yaw)+z*Math.cos(yaw);
-      const ry=yy*Math.cos(pitch)+rz*Math.sin(pitch);
-      drawPoints[i*2]=p[0]+(rx-xx)*head;
-      drawPoints[i*2+1]=p[1]+(ry-yy)*head/1.25;
+      const p=data.points[i],r=profiles[i];
+      const rx=r.x*cy+r.z*sy,rz=-r.x*sy+r.z*cy;
+      const ry=r.y*cp+rz*sp;
+      drawPoints[i*2]=p[0]+(rx-r.x)*r.head+r.x*.012*r.torso*state.breath;
+      drawPoints[i*2+1]=p[1]+(ry-r.y)*r.head/1.25-.004*r.torso*state.breath;
       coords[i*4+2]=p[0];coords[i*4+3]=p[1];
     }
     // The irises follow slightly ahead of the head, independently of its pose.
@@ -105,7 +122,7 @@
     }
     if(gl){
       gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,coords,gl.DYNAMIC_DRAW);
-      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(gl.getUniformLocation(program,'portrait'),0);
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(sampler,0);
       gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
     }else renderCanvas2D();
     if(state.mesh){
@@ -117,9 +134,18 @@
           if(k===0)c.moveTo(px,py);else c.lineTo(px,py);
         }c.closePath();
       }c.stroke();
+      // These are the actual independently driven vertices, not a decorative grid.
+      const dots=(vertices,color)=>{c.fillStyle=color;vertices.forEach(i=>{c.beginPath();c.arc(drawPoints[i*2]*wire.width,drawPoints[i*2+1]*wire.height,2.3,0,Math.PI*2);c.fill();});};
+      dots(iris.flat(),'#fff');dots([...upper.flat(),...lower.flat()],'#b76d34');
+      dots(profiles.map((r,i)=>r.torso>.8?i:-1).filter(i=>i>=0),'#444');
     }
     stage.dataset.aim=`${state.x.toFixed(3)},${state.y.toFixed(3)}`;
+    stage.dataset.gaze=`${state.gx.toFixed(3)},${state.gy.toFixed(3)}`;
     stage.dataset.blink=state.blink.toFixed(3);
+    stage.dataset.breath=state.breath.toFixed(4);
+    stage.dataset.frames=String(++renders);
+    renderTime+=performance.now()-started;
+    if(renders%24===1) $('#render-info').textContent=`[ ${gl?'WebGL':'Canvas 2D'} / ${indices.length/3} triangles / ${(renderTime/renders).toFixed(1)} ms average CPU draw ]`;
   }
   function renderCanvas2D() {
     const c=ctx2d,w=canvas.width,h=canvas.height,iw=portraitImage.naturalWidth,ih=portraitImage.naturalHeight;
@@ -147,22 +173,25 @@
   }
   function schedule() { if(!frame && state.ready && visible && !document.hidden) frame=requestAnimationFrame(tick); }
   function tick(time) {
-    frame=0;if(ctx2d && time-last<1000/24){schedule();return;}
-    const dt=Math.min(.05,(time-last)/1000||.016);last=time;
+    frame=0;if(state.paused || !visible || document.hidden || !state.ready)return;
+    if(time-last<1000/(ctx2d?24:60)-.5){schedule();return;}
+    const dt=Math.min(.1,(time-last)/1000||.016);last=time;
     if(!state.paused){
       const follow=1-Math.exp(-dt*11);
-      state.x+=(state.tx-state.x)*follow;state.y+=(state.ty-state.y)*follow;
-      const gaze=1-Math.exp(-dt*24);state.gx+=(state.tx-state.gx)*gaze;state.gy+=(state.ty-state.gy)*gaze;
+      state.x=damp(state.x,channels.head?state.tx:0,follow);state.y=damp(state.y,channels.head?state.ty:0,follow);
+      const gaze=1-Math.exp(-dt*24);state.gx=damp(state.gx,channels.eyes?state.tx:0,gaze);state.gy=damp(state.gy,channels.eyes?state.ty:0,gaze);
+      if(channels.breath){state.phase+=dt;state.breath=(1-Math.cos(state.phase*Math.PI*2/5.8))*.5;}
+      else state.breath=damp(state.breath,0,follow);
     }
-    const key=[state.x,state.y,state.gx,state.gy,state.blink].map(v=>v.toFixed(4)).join(':');
+    const key=[state.x,state.y,state.gx,state.gy,state.blink,state.breath].map(v=>v.toFixed(4)).join(':');
     if(key!==lastRender){render();lastRender=key;}
     if(!state.paused && visible && !document.hidden){
-      if(time>blinkAt && !blinkAnimation){blink();blinkAt=time+4400+Math.random()*2800;}
+      if(channels.blink && time>blinkAt && !blinkAnimation){blink();blinkAt=time+4400+Math.random()*2800;}
       schedule();
     }
   }
   function blink() {
-    if(state.paused || !state.ready || !window.anime) return;
+    if(state.paused || !state.ready || !visible || document.hidden || !window.anime) return;
     blinkAnimation?.revert();state.blink=0;
     blinkAnimation=window.anime.createTimeline({onComplete:()=>{state.blink=0;blinkAnimation=null;}})
       .add(state,{blink:1,duration:95,ease:'inQuad'})
@@ -187,6 +216,7 @@
     else{last=performance.now();blinkAt=last+5000;schedule();}
     $('#blink').disabled=value || !window.anime;
     $('#center').disabled=value;
+    $('.channels').disabled=value;
     document.querySelectorAll('[data-aim]').forEach(b=>b.disabled=value);
   }
   function pointer(e) {
@@ -197,7 +227,7 @@
     $('.reticle').style.top=`${Math.max(0,Math.min(1,y))*100}%`;
     stage.classList.add('tracking');
   }
-  stage.addEventListener('pointerdown',e=>{if(e.button!==0)return;stage.setPointerCapture(e.pointerId);pointer(e);});
+  stage.addEventListener('pointerdown',e=>{if(e.button!==0 || state.paused || !state.ready)return;stage.setPointerCapture(e.pointerId);pointer(e);});
   stage.addEventListener('pointermove',pointer);
   stage.addEventListener('pointerup',e=>{if(stage.hasPointerCapture(e.pointerId))stage.releasePointerCapture(e.pointerId);stage.classList.remove('tracking');});
   stage.addEventListener('pointercancel',()=>{stage.classList.remove('tracking');aim(0,0);});
@@ -211,16 +241,27 @@
   $('#pause').addEventListener('click',()=>pause(!state.paused));
   $('#mesh').addEventListener('click',()=>{state.mesh=!state.mesh;stage.classList.toggle('show-mesh',state.mesh);$('#mesh').textContent=state.mesh?'Hide rig':'Show rig';$('#mesh').setAttribute('aria-pressed',String(state.mesh));render();});
   document.querySelectorAll('[data-aim]').forEach(b=>b.addEventListener('click',()=>aim(...b.dataset.aim.split(',').map(Number))));
-  reduced.addEventListener('change',()=>pause(reduced.matches));
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(frame);frame=0;blinkAnimation?.pause();}else{blinkAnimation?.resume();last=performance.now();schedule();}});
-  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;if(visible){blinkAnimation?.resume();last=performance.now();schedule();}else{cancelAnimationFrame(frame);frame=0;blinkAnimation?.pause();}},{threshold:.01}).observe(stage);
+  for(const [id,channel] of Object.entries({'move-head':'head','move-eyes':'eyes','auto-blink':'blink','breathe':'breath'})){
+    $('#'+id).addEventListener('change',e=>{channels[channel]=e.target.checked;
+      if(channel==='blink' && !channels.blink){blinkAnimation?.revert();blinkAnimation=null;state.blink=0;}
+      if(channel==='breath' && channels.breath)state.phase=0;
+      schedule();
+    });
+  }
+  reduced.addEventListener('change',()=>{if(reduced.matches)pause(true);});
+  function visibilityChanged(){
+    if(state.paused || !visible || document.hidden){cancelAnimationFrame(frame);frame=0;blinkAnimation?.pause();}
+    else {blinkAnimation?.resume();last=performance.now();blinkAt=last+4000;schedule();}
+  }
+  document.addEventListener('visibilitychange',visibilityChanged);
+  new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;visibilityChanged();},{threshold:.01}).observe(stage);
   new ResizeObserver(resize).observe(stage);
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();pause(true);state.ready=false;stage.classList.remove('ready');status.textContent='[ Static portrait ]';document.querySelectorAll('button').forEach(b=>b.disabled=true);});
   async function init() {
     try {
       const response=await fetch('rig-data.json');if(!response.ok)throw new Error('Portrait data unavailable');data=await response.json();
       const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error('Portrait image unavailable'));i.src=data.file;});
-      portraitImage=img;setup();if(gl)texture=makeTexture(img);state.ready=true;resize();
+      portraitImage=img;prepareRegions();setup();if(gl)texture=makeTexture(img);state.ready=true;resize();
       stage.classList.add('ready');document.querySelectorAll('button').forEach(b=>b.disabled=false);
       pause(reduced.matches);
     } catch(error) {

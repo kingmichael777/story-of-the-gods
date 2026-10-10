@@ -20,7 +20,14 @@
         <button id="center" disabled>Center <span aria-hidden="true">⊙</span></button>
         <button id="pause" aria-pressed="false" disabled>Pause motion</button>
       </div>
-      <div class="study-note"><span class="label">[ What you're testing ]</span><p>Head direction, gaze and eyelids, controlled in real time from the original artwork.</p><p class="limit">A 2.5D prototype. Limited head movement from a single illustration.</p></div>
+      <fieldset class="channels" disabled>
+        <legend>[ Isolate the movement ]</legend>
+        <label><input id="move-head" type="checkbox" checked> Head turn</label>
+        <label><input id="move-eyes" type="checkbox" checked> Eye tracking</label>
+        <label><input id="auto-blink" type="checkbox" checked> Natural blinks</label>
+        <label><input id="breathe" type="checkbox" checked> Breathing</label>
+      </fieldset>
+      <div class="study-note"><span class="label">[ Try this ]</span><p>Turn off Head turn. Move across the portrait and watch only the eyes follow. Turn off Eye tracking to isolate the head.</p><p class="limit">A 2.5D study using the existing September 30 head portrait. Small turns, mesh eyelids and local chest movement. No video in this study.</p></div>
     </section>
     <section class="portrait-section" aria-label="Interactive character">
       <div class="portrait-top"><span class="label" id="status" role="status">[ Preparing portrait ]</span><button id="mesh" class="text-button" aria-pressed="false" disabled>Show rig</button></div>
@@ -42,6 +49,21 @@
       </div>
     </section>
   </main>
+  <details class="technical">
+    <summary>What actually moves</summary>
+    <div class="technical-content">
+      <p>The browser deforms separate regions of one original illustration. These are independent mesh controls, not separate painted layers or a complete skeletal character.</p>
+      <dl>
+        <dt>Head</dt><dd>A depth-shaped face rotates through a limited angle, blending into an anchored neck. It cannot reveal unseen anatomy.</dd>
+        <dt>Eyes and eyelids</dt><dd>Iris vertices follow your input faster than the head. Eyelid vertices close and reopen on a timed blink. Clean cinematic eyelids still need painted lid and eyeball layers.</dd>
+        <dt>Breathing</dt><dd>Chest and shoulder vertices expand and rise subtly over a 5.8-second cycle. The head and image boundary stay fixed when only breathing is enabled.</dd>
+        <dt>Existing website</dt><dd>The character performances and Mothership footage remain MP4 playback. The landing page and its satellites are unchanged.</dd>
+        <dt>Next production step</dt><dd>Consistent head angles, concealed neck and shoulder artwork, separate eyes and eyelids, or a sculpted 3D head with facial controls. Arms, fabric and cinematic actions need their own rig.</dd>
+      </dl>
+      <p id="render-info" class="label">[ Renderer preparing ]</p>
+      <p class="limit">Show rig reveals the actual triangles: head, eyes, eyelids and breathing areas are highlighted. Reduced motion starts paused. Motion stops when the portrait is offscreen or the tab is hidden.</p>
+    </div>
+  </details>
   <footer><span>Interactive prototype</span><span>Sacred Seven / Story of the Gods</span></footer>
   <noscript><p class="noscript">JavaScript is required for interaction. The original portrait is shown above.</p></noscript>
   <script src="../../js/vendor/anime-4.5.0.min.js"></script>

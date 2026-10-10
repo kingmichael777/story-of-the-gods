@@ -5,8 +5,8 @@ Isolated prototype at `/lab/one-above/`. The main landing page is not changed.
 This is a 2.5D portrait rig, not a full 3D character. One original illustration
 is mapped onto a triangulated, depth-shaped surface. WebGL is preferred; a smaller Canvas 2D
 mesh provides the same controls when WebGL is unavailable. Pointer/touch input drives
-a limited yaw/pitch rotation of the head with a soft neck attachment; the torso
-stays anchored. Iris vertices move independently with a faster response, and
+a limited yaw/pitch rotation of the head with a soft neck attachment. A separate
+weighted torso region breathes subtly. Iris vertices move independently with a faster response, and
 Anime.js closes/reopens the eyelid vertices. Show rig exposes the actual mesh.
 There is no image sequence, pose crossfade, video playback or simulated input.
 
@@ -64,3 +64,83 @@ The page retains the marketing system's container hooks and uses normal
 anchor navigation. Targeted Playwright
 checks cover pointer input, native touch tap/drag, blink deformation, pause,
 reduced motion and Canvas 2D fallback. Browser emulation is not physical-device QA.
+
+## Independent breathing and isolation controls
+
+The second pass extends the existing prototype rather than replacing it. Four
+checkboxes independently enable head tracking, iris tracking, automatic blinks
+and local breathing. Manual Blink remains available when automatic blinks are off.
+Turn off all but one channel to inspect its contribution; Show rig displays the
+actual deformed triangles and highlights iris, lid and chest vertices.
+
+Breathing is a 5.8-second cosine envelope applied only to a weighted region below
+the jaw. It raises shoulder/chest vertices by at most 0.004 of image height and
+expands them locally by 1.2% about the sternum. Its weights are exactly zero on
+the head and image perimeter. This is local mesh deformation, not whole-image
+bobbing or scaling. The illustration remains one texture: **no separated painted
+layers, anatomical skeleton, hidden-side artwork or full 3D model are claimed.**
+
+Head yaw/pitch is now limited to approximate ±15°/±9° to constrain distortion.
+These are synthetic mesh angles, not recovered anatomical camera angles.
+The eyes lead the head; disabling head tracking eases the head to neutral while
+iris tracking continues. Disabling breathing eases the chest to rest.
+
+The September 30 head study is a separately drawn close-up, not a frame extracted
+from the full-body performance. It is reused as the existing interaction study
+without repainting the character or replacing the production artwork.
+
+### Rendering and accessibility
+
+The WebGL mesh contains 3,240 vertices and 6,250 triangles. The Canvas 2D fallback
+renders 454 triangles. Head depths and deformation weights are precomputed.
+Rendering is capped at 60 fps for WebGL and 24 fps for Canvas 2D, with no upload
+or draw when the state is unchanged. The technical disclosure shows measured
+average CPU draw time (not GPU time or a guaranteed device frame rate).
+
+Reduced motion starts fully paused, with an explicit Enable motion button.
+Changing the system setting to Reduce pauses the study; changing it back does
+not override a user's pause. Offscreen and hidden-tab gates are combined so a
+visibility callback cannot restart an offscreen blink. The paused/static stage
+allows native vertical scrolling. Direction controls have 44px touch targets.
+
+### Reproduce the targeted browser checks
+
+Install Playwright and pngjs in your test environment, and install its Chromium
+browser. From the repository root run:
+
+```sh
+node scripts/verify-head-rig.cjs
+```
+
+The script starts its own temporary HTTP server. `WEBDEV_CHROMIUM_PATH` can point
+to a compatible Chromium binary. Optionally supply a preview URL as the first
+argument and a screenshots/report directory as the second argument. It checks
+both renderers, compares real rendered eye/chest/head pixels, exercises mouse,
+keyboard and native emulated touch events, verifies reduced motion and offscreen
+suspension, and checks static image fallbacks. It is not physical iPhone QA.
+
+### Current source and deployment audit
+
+The production Netlify deployment reported commit
+`53d499d0c5c8d0b62bf93232bcca40e91b6ec08b`. HTTP byte comparisons of its `index.html`,
+`js/scene-motion.js` and `js/editorial-motion.js` matched the repository files.
+The production scene controller still sets character MP4s to loop; Anime.js
+handles page transitions and satellite effects. This branch changes none of them.
+
+The repository contains the full-body JPEG, character MP4s, poster JPEGs, and
+this prototype's original portrait texture with prepared facial landmarks.
+No PSD/PSB/ORA/KRA/Blend/FBX/GLTF/GLB/Spine/MOC3 source is present in the inspected
+repository. A Library search also located a raster “Six-view cybernetic head
+study.png”; that is a drawing sheet, not evidence of a layered rig. No additional
+rig-ready layered source was found in the accessible search results.
+
+### Artwork needed for the next level
+
+- Separate eye sockets, eyeballs/irises, upper/lower lids and painted closed eyes.
+- Head/neck/shoulder overlap with hidden areas filled in for clean rotation.
+- Consistent front, ±15° and ±30° views, or a sculpted and textured 3D head.
+- Face controls or blend shapes for expression, jaw motion and natural blinking.
+- Body/fabric/satellite rigs and choreographed keyframes for cinematic actions.
+
+Those assets would replace the approximation where needed. The current browser
+input, accessibility and visibility controls can remain.
