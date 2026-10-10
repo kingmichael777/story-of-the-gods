@@ -3,7 +3,8 @@
 Isolated prototype at `/lab/one-above/`. The main landing page is not changed.
 
 This is a 2.5D portrait rig, not a full 3D character. One original illustration
-is mapped onto a triangulated, depth-shaped surface. Pointer/touch input drives
+is mapped onto a triangulated, depth-shaped surface. WebGL is preferred; a smaller Canvas 2D
+mesh provides the same controls when WebGL is unavailable. Pointer/touch input drives
 a limited yaw/pitch rotation of the head with a soft neck attachment; the torso
 stays anchored. Iris vertices move independently with a faster response, and
 Anime.js closes/reopens the eyelid vertices. Show rig exposes the actual mesh.
@@ -51,15 +52,15 @@ deformations, not separate painted lid artwork. This is a proof of direct
 interaction, with visible approximation at extreme angles. It does not animate
 arms, clothing, satellites or the full body.
 
-The original portrait remains visible if JavaScript, image/data loading or WebGL
-is unavailable. Context loss returns to the static portrait. The implementation
+The original portrait remains visible if JavaScript, image/data loading or both
+canvas rendering modes are unavailable. Context loss returns to the static portrait. The implementation
 works offline once its same-origin files are available.
 
 ## Verification
 
 Checked responsive layouts at 1440, 1280, 768 and 390 pixels: no page exceptions,
 local request failures, horizontal overflow, duplicate IDs or text collisions.
-The marketing-site harness's Barba-container expectation is inapplicable to this
-standalone interaction page, which uses normal navigation. Targeted Playwright
+The page retains the marketing system's container hooks and uses normal
+anchor navigation. Targeted Playwright
 checks cover pointer input, native touch tap/drag, blink deformation, pause,
-reduced motion and WebGL fallback. Browser emulation is not physical-device QA.
+reduced motion and Canvas 2D fallback. Browser emulation is not physical-device QA.

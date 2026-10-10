@@ -6,7 +6,8 @@
   const status = $('#status'), direction = $('#direction');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
   const state = { x:0, y:0, gx:0, gy:0, tx:0, ty:0, blink:0, paused:reduced.matches, mesh:false, ready:false };
-  let gl, program, data, texture, buffer, indices, coords, drawPoints;
+  let gl, ctx2d, portraitImage, program, data, texture, buffer, indices, coords, drawPoints;
+  let lastRender='';
   let frame = 0, last = 0, visible = true, blinkAt = 0, blinkAnimation, returnTimer;
   const upper = [[246,161,160,159,158,157,173], [466,388,387,386,385,384,398]];
   const lower = [[7,163,144,145,153,154,155], [249,390,373,374,380,381,382]];
@@ -20,7 +21,15 @@
   }
   function setup() {
     gl = canvas.getContext('webgl', {alpha:false,antialias:true,preserveDrawingBuffer:true});
-    if (!gl) throw new Error('WebGL unavailable');
+    coords=new Float32Array(data.points.length*4);
+    drawPoints=new Float32Array(data.points.length*2);
+    if (!gl) {
+      ctx2d=canvas.getContext('2d',{alpha:false});
+      if(!ctx2d)throw new Error('Canvas unavailable');
+      indices=new Uint16Array(data.fallbackTriangles);
+      canvas.classList.add('canvas-2d');stage.dataset.renderer='canvas2d';return;
+    }
+    stage.dataset.renderer='webgl';
     program = gl.createProgram();
     gl.attachShader(program,shader(gl.VERTEX_SHADER,`
       attribute vec2 position; attribute vec2 uv;
@@ -43,8 +52,6 @@
     });
     const ib=gl.createBuffer();gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
     indices=new Uint16Array(data.triangles);gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,indices,gl.STATIC_DRAW);
-    coords=new Float32Array(data.points.length*4);
-    drawPoints=new Float32Array(data.points.length*2);
   }
   function makeTexture(img) {
     const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);
@@ -56,11 +63,11 @@
     return t;
   }
   function resize() {
-    if (!gl) return;
-    const w=Math.min(1200,Math.round(stage.clientWidth*Math.min(devicePixelRatio||1,2)));
+    if (!gl && !ctx2d) return;
+    const w=Math.min(ctx2d?800:1200,Math.round(stage.clientWidth*Math.min(devicePixelRatio||1,2)));
     const h=Math.round(w/0.8);
     if (canvas.width!==w || canvas.height!==h) {
-      canvas.width=wire.width=w;canvas.height=wire.height=h;gl.viewport(0,0,w,h);
+      canvas.width=wire.width=w;canvas.height=wire.height=h;if(gl)gl.viewport(0,0,w,h);
     }
     render();
   }
@@ -96,9 +103,11 @@
     for(let i=0;i<drawPoints.length/2;i++){
       coords[i*4]=drawPoints[i*2];coords[i*4+1]=drawPoints[i*2+1];
     }
-    gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,coords,gl.DYNAMIC_DRAW);
-    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(gl.getUniformLocation(program,'portrait'),0);
-    gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
+    if(gl){
+      gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,coords,gl.DYNAMIC_DRAW);
+      gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.uniform1i(gl.getUniformLocation(program,'portrait'),0);
+      gl.drawElements(gl.TRIANGLES,indices.length,gl.UNSIGNED_SHORT,0);
+    }else renderCanvas2D();
     if(state.mesh){
       const c=wire.getContext('2d');c.clearRect(0,0,wire.width,wire.height);
       c.strokeStyle='rgba(245,189,90,.50)';c.lineWidth=.65;c.beginPath();
@@ -112,15 +121,41 @@
     stage.dataset.aim=`${state.x.toFixed(3)},${state.y.toFixed(3)}`;
     stage.dataset.blink=state.blink.toFixed(3);
   }
+  function renderCanvas2D() {
+    const c=ctx2d,w=canvas.width,h=canvas.height,iw=portraitImage.naturalWidth,ih=portraitImage.naturalHeight;
+    c.setTransform(1,0,0,1,0,0);c.fillStyle='#fff';c.fillRect(0,0,w,h);
+    for(let n=0;n<indices.length;n+=3){
+      const vs=[indices[n],indices[n+1],indices[n+2]];
+      const s=vs.map(i=>[data.points[i][0]*iw,data.points[i][1]*ih]);
+      const d=vs.map(i=>[drawPoints[i*2]*w,drawPoints[i*2+1]*h]);
+      const sx1=s[1][0]-s[0][0],sy1=s[1][1]-s[0][1],sx2=s[2][0]-s[0][0],sy2=s[2][1]-s[0][1];
+      const dx1=d[1][0]-d[0][0],dy1=d[1][1]-d[0][1],dx2=d[2][0]-d[0][0],dy2=d[2][1]-d[0][1];
+      const det=sx1*sy2-sx2*sy1;if(Math.abs(det)<.0001)continue;
+      const a=(dx1*sy2-dx2*sy1)/det,b=(dy1*sy2-dy2*sy1)/det;
+      const cc=(dx2*sx1-dx1*sx2)/det,dd=(dy2*sx1-dy1*sx2)/det;
+      const sides=[Math.hypot(d[1][0]-d[2][0],d[1][1]-d[2][1]),Math.hypot(dx2,dy2),Math.hypot(dx1,dy1)];
+      const perimeter=sides[0]+sides[1]+sides[2];if(perimeter<.001)continue;
+      const mx=d.reduce((v,p,k)=>v+p[0]*sides[k],0)/perimeter,my=d.reduce((v,p,k)=>v+p[1]*sides[k],0)/perimeter;
+      const radius=Math.abs(dx1*dy2-dx2*dy1)/perimeter;
+      const overlap=1+Math.min(10,.7/Math.max(.01,radius));
+      c.save();c.beginPath();
+      d.forEach(([x,y],k)=>{const ex=mx+(x-mx)*overlap,ey=my+(y-my)*overlap;if(k===0)c.moveTo(ex,ey);else c.lineTo(ex,ey);});
+      c.closePath();c.clip();
+      c.setTransform(a,b,cc,dd,d[0][0]-a*s[0][0]-cc*s[0][1],d[0][1]-b*s[0][0]-dd*s[0][1]);
+      c.drawImage(portraitImage,0,0);c.restore();
+    }
+  }
   function schedule() { if(!frame && state.ready && visible && !document.hidden) frame=requestAnimationFrame(tick); }
   function tick(time) {
-    frame=0;const dt=Math.min(.05,(time-last)/1000||.016);last=time;
+    frame=0;if(ctx2d && time-last<1000/24){schedule();return;}
+    const dt=Math.min(.05,(time-last)/1000||.016);last=time;
     if(!state.paused){
       const follow=1-Math.exp(-dt*11);
       state.x+=(state.tx-state.x)*follow;state.y+=(state.ty-state.y)*follow;
       const gaze=1-Math.exp(-dt*24);state.gx+=(state.tx-state.gx)*gaze;state.gy+=(state.ty-state.gy)*gaze;
     }
-    render();
+    const key=[state.x,state.y,state.gx,state.gy,state.blink].map(v=>v.toFixed(4)).join(':');
+    if(key!==lastRender){render();lastRender=key;}
     if(!state.paused && visible && !document.hidden){
       if(time>blinkAt && !blinkAnimation){blink();blinkAt=time+4400+Math.random()*2800;}
       schedule();
@@ -185,7 +220,7 @@
     try {
       const response=await fetch('rig-data.json');if(!response.ok)throw new Error('Portrait data unavailable');data=await response.json();
       const img=await new Promise((resolve,reject)=>{const i=new Image();i.onload=()=>resolve(i);i.onerror=()=>reject(new Error('Portrait image unavailable'));i.src=data.file;});
-      setup();texture=makeTexture(img);state.ready=true;resize();
+      portraitImage=img;setup();if(gl)texture=makeTexture(img);state.ready=true;resize();
       stage.classList.add('ready');document.querySelectorAll('button').forEach(b=>b.disabled=false);
       pause(reduced.matches);
     } catch(error) {
